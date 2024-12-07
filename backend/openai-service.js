@@ -35,6 +35,7 @@ async function generateReport(userObservation, aiVisionAnalysis = null, visualiz
 
         👁️ OBSERVATION SUMMARY:
         %observation%
+        ${aiVisionAnalysis ? `\n\nInitial Image Analysis:\n${aiVisionAnalysis}` : ''}
 
         🔍 TECHNICAL ANALYSIS:
         • Vision Analysis: %analysis%

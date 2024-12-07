@@ -42,7 +42,6 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
     const latitude = req.body.latitude;
     const longitude = req.body.longitude;
 
-    // Check if we have at least one input
     if (!imageFile && !userObservation) {
       return res.status(400).json({
         error: 'Missing input',
@@ -50,23 +49,26 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
       });
     }
 
-    let aiVisionAnalysis = null;
+    let openAiVisionResults = null;
+    let roboflowResults = null;
     let visualizations = null;
     let roboflowError = null;
     
-    // Only process image if it exists
     if (imageFile) {
-      const damageAnalysis = await analyzeDamage(imageFile.buffer);
-      
-      if (damageAnalysis?.[0]?.open_ai?.output) {
-        aiVisionAnalysis = damageAnalysis[0].open_ai.output;
-      } else {
-        console.warn('Image analysis produced no results');
+      // Get OpenAI Vision Analysis
+      try {
+        const openAiAnalysis = await analyzeDamage(imageFile.buffer);
+        if (openAiAnalysis?.[0]?.open_ai?.output) {
+          openAiVisionResults = openAiAnalysis[0].open_ai.output;
+        }
+      } catch (openAiErr) {
+        console.warn('OpenAI Vision analysis failed:', openAiErr);
       }
 
+      // Get Roboflow Analysis
       try {
         const damageResults = await scoreDamage(imageFile.buffer);
-        aiVisionAnalysis = damageResults.analysis.map(damage => 
+        roboflowResults = damageResults.analysis.map(damage => 
           `- ${damage.type} damage detected:\n` +
           `  Location: ${damage.location}\n` +
           `  Dimensions: ${damage.dimensions}\n` +
@@ -87,22 +89,29 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
       console.warn('Failed to fetch location info:', error);
     }
 
+    // Combine both AI analyses for the report
+    const combinedAiAnalysis = [
+      openAiVisionResults && 'OpenAI Analysis:\n' + openAiVisionResults,
+      roboflowResults && 'Roboflow Analysis:\n' + roboflowResults
+    ].filter(Boolean).join('\n\n');
+
     // Generate report with all available information
     const report = await generateReport(
       userObservation || '',
-      aiVisionAnalysis,
+      combinedAiAnalysis,
       visualizations,
       locationInfo
     );
 
-    // Update Supabase storage to include location
+    // Store in Supabase with separate analysis results
     const { data, error } = await supabase
       .from('reports')
       .insert([
         {
           report_text: report,
           user_observation: userObservation || null,
-          ai_vision_analysis: aiVisionAnalysis || null,
+          openai_vision_analysis: openAiVisionResults,
+          roboflow_analysis: roboflowResults,
           location: locationInfo
         }
       ])
@@ -117,7 +126,8 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
         inspectionDate: data.created_at,
         reportId: data.id,
         userObservation: data.user_observation,
-        hasImageAnalysis: !!aiVisionAnalysis,
+        hasOpenAiAnalysis: !!openAiVisionResults,
+        hasRoboflowAnalysis: !!roboflowResults,
         visualizations: visualizations,
         roboflowError: roboflowError
       }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 
 function App() {
@@ -7,6 +7,29 @@ function App() {
   const [error, setError] = useState(null);
   const [userObservation, setUserObservation] = useState('');
   const [selectedImage, setSelectedImage] = useState(null);
+  const [loadingMessage, setLoadingMessage] = useState('Analyzing your roof...');
+
+  useEffect(() => {
+    if (loading) {
+      const messages = [
+        'Analyzing your roof...',
+        'Confirming your location and weather data...',
+        'Loading image data...',
+        'Performing technical analysis...',
+        'Calculating damage severity...',
+        'Finalizing recommendations...',
+        'Generating report...'
+      ];
+      let currentIndex = 0;
+
+      const intervalId = setInterval(() => {
+        currentIndex = (currentIndex + 1) % messages.length;
+        setLoadingMessage(messages[currentIndex]);
+      }, 2000); // Change message every 2 seconds
+
+      return () => clearInterval(intervalId);
+    }
+  }, [loading]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,147 +62,140 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Roof Inspection Tool</h1>
-        <p className="subheading">Generate detailed roof inspection reports with AI assistance.</p>
+        <h1>RoofScan AI</h1>
+        <p className="subheading">Instant AI-Powered Roof Inspection Report</p>
+      </header>
 
+      <main className="app-main">
         <form onSubmit={handleSubmit} className="form-container">
-          {/* Section: Image Upload */}
           <div className="form-section">
-            <h2>Step 1: Upload Roof Image</h2>
+            <h2>Upload Roof Image</h2>
             <div className="file-input-container">
               <label className="file-input-label">
-                Choose File
+                {selectedImage ? 'Change Image' : 'Choose Image'}
                 <input
                   type="file"
                   className="file-input"
                   onChange={(e) => setSelectedImage(e.target.files[0])}
+                  accept="image/*"
                 />
               </label>
-              <div className="file-name">
-                {selectedImage ? selectedImage.name : "No file chosen"}
-              </div>
+              {selectedImage && (
+                <div className="image-preview">
+                  <img
+                    src={URL.createObjectURL(selectedImage)}
+                    alt="Selected Roof"
+                    className="preview-image"
+                  />
+                </div>
+              )}
             </div>
-            {selectedImage && (
-              <div className="image-preview">
-                <img
-                  src={URL.createObjectURL(selectedImage)}
-                  alt="Selected Roof"
-                  className="preview-image"
-                />
-              </div>
-            )}
           </div>
 
-          {/* Section: User Observations */}
           <div className="form-section">
-            <h2>Step 2: Describe Roof Condition</h2>
+            <h2>Describe Roof Condition</h2>
             <textarea
               value={userObservation}
               onChange={(e) => setUserObservation(e.target.value)}
-              placeholder="Describe what you observe about the roof damage..."
+              placeholder="Describe any visible damage or concerns..."
               rows={4}
               className="text-area"
             />
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !selectedImage}
             className="submit-button"
           >
-            {loading ? 'Generating Report...' : 'Generate Report'}
+            {loading ? 'Analyzing...' : 'Generate Report'}
           </button>
         </form>
 
-        {/* Feedback */}
-        {loading && <p className="loading-message">Processing... Please wait</p>}
-        {error && <p className="error-message">Error: {error}</p>}
-        {result && (
-          <div className="result-section">
-            <h2>Inspection Report</h2>
-            
-            <div className="structured-report">
-              {result.report.split('\n\n').map((section, index) => {
-                if (section.trim()) {
-                  return (
-                    <div key={index} className="report-section">
-                      {section.split('\n').map((line, lineIndex) => (
-                        <p key={lineIndex}>{line}</p>
-                      ))}
-                    </div>
-                  );
-                }
-                return null;
-              })}
+        <div className="result-section">
+          <h2>Inspection Report</h2>
+
+          {loading && (
+            <div className="result-loading">
+              <div className="spinner"></div>
+              <p>{loadingMessage}</p>
             </div>
+          )}
 
-            {/* Add Visualizations Section */}
-            {result.metadata.visualizations ? (
-              <div className="visualizations-container">
-                <h2>Damage Analysis Visualizations</h2>
-                <div className="visualization-grid">
-                  {/* Annotated Image */}
-                  {result.metadata.visualizations.annotatedImage ? (
-                    <div className="visualization-item">
-                      <h4>Detected Damage Locations</h4>
-                      <img
-                        src={`data:image/jpeg;base64,${result.metadata.visualizations.annotatedImage}`}
-                        alt="Annotated damage locations"
-                        className="annotated-image"
-                      />
-                    </div>
-                  ) : (
-                    <div className="visualization-item error-message">
-                      <h4>Detected Damage Locations</h4>
-                      <p>Annotated image unavailable</p>
-                    </div>
-                  )}
+          {error ? (
+            <p className="error-message">Error: {error}</p>
+          ) : result ? (
+            <>
+              <div className="report-content">
+                {result.report.split('\n\n').map((section, index) => (
+                  <div key={index} className="report-section">
+                    {section.split('\n').map((line, lineIndex) => (
+                      <p key={lineIndex}>{line}</p>
+                    ))}
+                  </div>
+                ))}
+                <div><p>Visit <a href="https://www.remihq.com/" target="_blank" rel="noopener noreferrer">www.remihq.com</a> for the best contractors, timeline, and pricing. All under one roof.</p></div>
+              </div>
 
-                  {/* Cropped Images */}
-                  {result.metadata.visualizations.croppedImages?.length > 0 ? (
-                    <div className="visualization-item">
-                      <h4>Damage Close-ups</h4>
-                      <div className="cropped-images-grid">
-                        {result.metadata.visualizations.croppedImages.map((crop, index) => (
-                          <img
-                            key={index}
-                            src={`data:image/jpeg;base64,${crop}`}
-                            alt={`Damage area ${index + 1}`}
-                            className="cropped-image"
-                          />
-                        ))}
+              {result.metadata.visualizations && (
+                <div className="visualizations-container">
+                  <h3>Damage Analysis</h3>
+                  <div className="visualization-grid">
+                    {result.metadata.visualizations.annotatedImage && (
+                      <div className="visualization-item">
+                        <h4>Detected Damage Areas</h4>
+                        <img
+                          src={`data:image/jpeg;base64,${result.metadata.visualizations.annotatedImage}`}
+                          alt="Annotated damage locations"
+                          className="annotated-image"
+                        />
                       </div>
-                    </div>
-                  ) : (
-                    <div className="visualization-item">
-                      <h4>Damage Close-ups</h4>
-                      <p className="error-message">Close-up images unavailable</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : result.metadata.roboflowError && (
-              <div className="error-message visualization-error">
-                <p>Detailed damage visualizations are currently unavailable: {result.metadata.roboflowError}</p>
-                <p>The analysis continues with available data.</p>
-              </div>
-            )}
+                    )}
 
-            {/* Existing metadata section */}
-            <h3>Metadata:</h3>
-            <pre className="metadata">
-              {JSON.stringify(
-                { ...result.metadata, visualizations: undefined }, // Exclude visualizations from JSON display
-                null,
-                2
+                    {result.metadata.visualizations.croppedImages?.length > 0 && (
+                      <div className="visualization-item">
+                        <h4>Damage Close-ups</h4>
+                        <div className="cropped-images-grid">
+                          {result.metadata.visualizations.croppedImages.map((crop, index) => (
+                            <img
+                              key={index}
+                              src={`data:image/jpeg;base64,${crop}`}
+                              alt={`Damage area ${index + 1}`}
+                              className="cropped-image"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
-            </pre>
-          </div>
-        )}
-      </header>
+
+              <div className="metadata-section">
+                <h3>Metadata</h3>
+                <pre className="metadata">
+                  {JSON.stringify(
+                    { ...result.metadata, visualizations: undefined },
+                    null,
+                    2
+                  )}
+                </pre>
+              </div>
+            </>
+          ) : (
+            <div className="empty-state">
+              <p>Upload an image and submit the form to generate an inspection report.</p>
+            </div>
+          )}
+        </div>
+      </main>
+
+      <footer className="app-footer">
+        <p>&copy; 2024 RoofScan AI. All rights reserved.</p>
+      </footer>
     </div>
   );
 }
 
 export default App;
+
