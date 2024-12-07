@@ -4,6 +4,7 @@ const cors = require('cors');
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { OpenAI } = require('openai');
+const multer = require('multer');
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -28,59 +29,72 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-// Updated endpoint
-app.post('/api/generate-report', async (req, res) => {
-  const { hailDamageLikely, probability } = req.body;
+// Add multer for handling file uploads
+const upload = multer({
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  }
+});
 
+// Updated endpoint
+app.post('/api/generate-report', upload.single('image'), async (req, res) => {
   try {
+    const hailDamageLikely = JSON.parse(req.body.hailDamageLikely);
+    const probability = JSON.parse(req.body.probability);
+    const { userObservation } = req.body;
+    const imageBuffer = req.file?.buffer;
+
+    // Upload image to Supabase Storage if present
+    let imageUrl = null;
+    if (imageBuffer) {
+      try {
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+        const filePath = `public/${fileName}`;
+        const { data: uploadData, error: uploadError } = await supabase
+          .storage
+          .from('inspection-images')
+          .upload(filePath, imageBuffer, {
+            contentType: 'image/jpeg',
+          });
+
+        if (uploadError) {
+          console.error('Supabase Storage Error:', uploadError);
+          throw new Error(`Failed to upload image: ${uploadError.message}`);
+        }
+        
+        const { data: { publicUrl } } = supabase
+          .storage
+          .from('inspection-images')
+          .getPublicUrl(`public/${fileName}`);
+        
+        imageUrl = publicUrl;
+      } catch (uploadError) {
+        console.error('Image Upload Error:', uploadError);
+        // Continue without image if upload fails
+        imageUrl = null;
+      }
+    }
+
     // Generate report using OpenAI
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
-          content: `You are a professional roofing inspector. Please provide a detailed damage assessment report based on the following categories if applicable:
-
-1. Shingle Damage Assessment:
-   - Identify type of damage (e.g., cracked, missing, curling, blistering, granule loss)
-   - Severity level (Minor, Moderate, Severe)
-   - Location on roof
-   - Approximate area affected
-   - Recommendations for repair
-
-2. Structural Damage Assessment:
-   - Identify type of damage (e.g., sagging, rotting, warping, broken supports)
-   - Location of structural issues
-   - Potential causes
-   - Safety concerns
-   - Recommendations for repair
-
-3. Water Damage Assessment:
-   - Type of water damage (e.g., water stains, mold growth, decay)
-   - Location of water intrusion
-   - Extent of water damage
-   - Potential sources of leaks
-   - Associated risks
-   - Recommendations for repair
-
-Please provide specific details for each category found in the inspection. If any category shows no signs of damage, please indicate "No damage observed" for that section.
-
-Additional Notes:
-- Include urgency level for repairs (Immediate, Soon, Monitor)
-- Estimate remaining life of affected components
-- Note any warranty considerations
-- Document any code violations
-
-Please provide your assessment in a clear, professional format.`
+          content: "You are a professional roofing inspector. Provide a single paragraph assessment that includes the damage type (i.e., shingle damage, structural damage, water damage), severity, and recommended action. Keep your response concise and focused on the most important findings."
         },
         {
           role: "user",
-          content: `Write a professional damage assessment report based on severe dents and pockmarks on the shingle surface. Also consider findings:
+          content: `Based on these observations, provide a brief professional assessment:
+            ${userObservation}
+            
+            Additional findings:
             - Hail damage is ${hailDamageLikely ? 'likely' : 'unlikely'} present
-            - There is a ${probability * 100}% probability of hail damage
-            Include a brief assessment and recommendation.`
+            - There is a ${probability * 100}% probability of hail damage`
         }
-      ]
+      ],
+      max_tokens: 100,
+      temperature: 0.8
     });
 
     const reportText = completion.choices[0].message.content;
@@ -92,7 +106,9 @@ Please provide your assessment in a clear, professional format.`
         {
           hail_damage_likely: hailDamageLikely,
           probability: probability,
-          report_text: reportText
+          report_text: reportText,
+          user_observation: userObservation,
+          image_url: imageUrl
         }
       ])
       .select()
@@ -105,7 +121,8 @@ Please provide your assessment in a clear, professional format.`
       report: data.report_text,
       metadata: {
         inspectionDate: data.created_at,
-        reportId: data.id
+        reportId: data.id,
+        userObservation: data.user_observation
       }
     });
   } catch (error) {

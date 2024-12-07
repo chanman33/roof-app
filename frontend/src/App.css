@@ -118,3 +118,34 @@ h3, h4 {
   -webkit-text-fill-color: transparent;
   font-weight: 600;
 }
+
+.image-upload {
+  background: rgba(54, 59, 68, 0.5);
+  padding: 25px;
+  border-radius: 12px;
+  margin: 15px 0;
+  width: 90%;
+  max-width: 800px;
+  text-align: left;
+  border: 1px solid rgba(97, 218, 251, 0.2);
+  backdrop-filter: blur(8px);
+}
+
+.file-input {
+  background: rgba(30, 33, 39, 0.7);
+  padding: 10px;
+  border-radius: 8px;
+  width: 100%;
+  border: 1px solid rgba(97, 218, 251, 0.1);
+  color: #e6e9ec;
+}
+
+.image-preview {
+  margin-top: 15px;
+  text-align: center;
+}
+
+.image-preview img {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
