@@ -226,3 +226,11 @@ h3 {
     grid-template-columns: 1fr 1fr; /* or just 1fr for single column if desired */
   }
 }
+
+.visualization-error {
+  background-color: #fff3f3;
+  border: 1px solid #ffcdd2;
+  padding: 15px;
+  border-radius: 4px;
+  margin: 20px 0;
+}

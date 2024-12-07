@@ -14,9 +14,6 @@ async function getLocationInfo() {
       city: response.data.city || 'Unknown',
       state: response.data.region || 'Unknown',
       country: response.data.country_name || 'Unknown',
-      latitude: response.data.latitude,
-      longitude: response.data.longitude,
-      timestamp: new Date().toISOString()
     };
   } catch (error) {
     console.error('Error fetching location data:', error);
@@ -25,7 +22,6 @@ async function getLocationInfo() {
       city: 'Unknown',
       state: 'Unknown',
       country: 'Unknown',
-      timestamp: new Date().toISOString()
     };
   }
 }

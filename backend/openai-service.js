@@ -19,34 +19,32 @@ async function generateReport(userObservation, aiVisionAnalysis = null, visualiz
   if (locationInfo) {
     aiContext += `\n\nLocation Details:
     - City: ${locationInfo.city}
-    - Region: ${locationInfo.state}
-    - Country: ${locationInfo.country}
-    - Latitude: ${locationInfo.latitude}
-    - Longitude: ${locationInfo.longitude}`;
+    - Region: ${locationInfo.state}`;
   }
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-3.5-turbo",
+    model: "gpt-4o",
     messages: [
       {
         role: "system",
         content: `You are a professional roofing inspector with expertise in regional building codes and weather patterns. 
         Provide a detailed assessment that includes:
-        1. Location-specific context and typical weather challenges
-        2. Analysis of user observations and AI vision findings
-        3. Identified damage types (e.g., shingle damage, structural issues, water damage)
-        4. Severity assessment (Low/Medium/High)
-        5. Specific recommendations based on local conditions
+        1. Short and brief location-specific context and typical weather challenges
+        2. Summarize the ${userObservation} if available
+        3. Analysis of user observations and AI vision findings with a confidence score based on the ${aiVisionAnalysis} and ${visualizations} if available
+        4. Identified damage types (e.g., shingle damage, structural issues, water damage)
+        5. Severity assessment (Low/Medium/High)
+        6. Specific recommendations based on local conditions
         
-        Format your response as a single, well-structured paragraph that flows naturally. Include the location details and ${aiContext} in your response.`
+        Format your response as two, well-structured paragraphs that flows naturally. Include the ${aiContext} in your response.`
       },
       {
         role: "user",
         content: aiContext
       }
     ],
-    max_tokens: 250,
-    temperature: 0.7
+    max_tokens: 750,
+    temperature: 0.5
   });
 
   return completion.choices[0].message.content;

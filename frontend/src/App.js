@@ -93,7 +93,7 @@ function App() {
         </form>
 
         {/* Feedback */}
-        {loading && <p className="loading-message">Processing... Please wait.</p>}
+        {loading && <p className="loading-message">Processing... Please wait</p>}
         {error && <p className="error-message">Error: {error}</p>}
         {result && (
           <div className="result-section">
@@ -101,37 +101,54 @@ function App() {
             <p className="result-report">{result.report}</p>
 
             {/* Add Visualizations Section */}
-            {result.metadata.visualizations && (
+            {result.metadata.visualizations ? (
               <div className="visualizations-container">
                 <h2>Damage Analysis Visualizations</h2>
                 <div className="visualization-grid">
-
                   {/* Annotated Image */}
-                  <div className="visualization-item">
-                    <h4>Detected Damage Locations</h4>
-                    <img
-                      src={`data:image/jpeg;base64,${result.metadata.visualizations.annotatedImage}`}
-                      alt="Annotated damage locations"
-                      className="annotated-image"
-                    />
-                  </div>
+                  {result.metadata.visualizations.annotatedImage ? (
+                    <div className="visualization-item">
+                      <h4>Detected Damage Locations</h4>
+                      <img
+                        src={`data:image/jpeg;base64,${result.metadata.visualizations.annotatedImage}`}
+                        alt="Annotated damage locations"
+                        className="annotated-image"
+                      />
+                    </div>
+                  ) : (
+                    <div className="visualization-item error-message">
+                      <h4>Detected Damage Locations</h4>
+                      <p>Annotated image unavailable</p>
+                    </div>
+                  )}
 
                   {/* Cropped Images */}
-                  <div className="visualization-item">
-                    <h4>Damage Close-ups</h4>
-                    <div className="cropped-images-grid">
-                      {result.metadata.visualizations.croppedImages.map((crop, index) => (
-                        <img
-                          key={index}
-                          src={`data:image/jpeg;base64,${crop}`}
-                          alt={`Damage area ${index + 1}`}
-                          className="cropped-image"
-                        />
-                      ))}
+                  {result.metadata.visualizations.croppedImages?.length > 0 ? (
+                    <div className="visualization-item">
+                      <h4>Damage Close-ups</h4>
+                      <div className="cropped-images-grid">
+                        {result.metadata.visualizations.croppedImages.map((crop, index) => (
+                          <img
+                            key={index}
+                            src={`data:image/jpeg;base64,${crop}`}
+                            alt={`Damage area ${index + 1}`}
+                            className="cropped-image"
+                          />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-
+                  ) : (
+                    <div className="visualization-item">
+                      <h4>Damage Close-ups</h4>
+                      <p className="error-message">Close-up images unavailable</p>
+                    </div>
+                  )}
                 </div>
+              </div>
+            ) : result.metadata.roboflowError && (
+              <div className="error-message visualization-error">
+                <p>Detailed damage visualizations are currently unavailable: {result.metadata.roboflowError}</p>
+                <p>The analysis continues with available data.</p>
               </div>
             )}
 

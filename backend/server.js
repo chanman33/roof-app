@@ -52,6 +52,7 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
 
     let aiVisionAnalysis = null;
     let visualizations = null;
+    let roboflowError = null;
     
     // Only process image if it exists
     if (imageFile) {
@@ -62,20 +63,21 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
       } else {
         console.warn('Image analysis produced no results');
       }
-    }
 
-    if (imageFile) {
-      const damageResults = await scoreDamage(imageFile.buffer);
-      
-      // Format the analysis for the OpenAI report
-      aiVisionAnalysis = damageResults.analysis.map(damage => 
-        `- ${damage.type} damage detected:\n` +
-        `  Location: ${damage.location}\n` +
-        `  Dimensions: ${damage.dimensions}\n` +
-        `  Confidence: ${damage.confidence}%`
-      ).join('\n\n');
-      
-      visualizations = damageResults.visualizations;
+      try {
+        const damageResults = await scoreDamage(imageFile.buffer);
+        aiVisionAnalysis = damageResults.analysis.map(damage => 
+          `- ${damage.type} damage detected:\n` +
+          `  Location: ${damage.location}\n` +
+          `  Dimensions: ${damage.dimensions}\n` +
+          `  Confidence: ${damage.confidence}%`
+        ).join('\n\n');
+        
+        visualizations = damageResults.visualizations;
+      } catch (roboflowErr) {
+        console.warn('Roboflow analysis failed:', roboflowErr);
+        roboflowError = roboflowErr.message;
+      }
     }
 
     let locationInfo = null;
@@ -116,7 +118,8 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
         reportId: data.id,
         userObservation: data.user_observation,
         hasImageAnalysis: !!aiVisionAnalysis,
-        visualizations: visualizations // Contains both annotated and cropped images
+        visualizations: visualizations,
+        roboflowError: roboflowError
       }
     });
   } catch (error) {
