@@ -3,8 +3,9 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
-const { OpenAI } = require('openai');
 const multer = require('multer');
+const { generateReport } = require('./openai-service');
+const { analyzeDamage } = require('./roboflow-vision');
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -23,11 +24,6 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_ANON_KEY
 );
-
-// Add OpenAI initialization
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
 
 // Add multer for handling file uploads
 const upload = multer({
@@ -75,31 +71,26 @@ app.post('/api/generate-report', upload.single('image'), async (req, res) => {
       }
     }
 
-    // Generate report using OpenAI
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: "You are a professional roofing inspector. Provide a single paragraph assessment that includes the damage type (i.e., shingle damage, structural damage, water damage), severity, and recommended action. Keep your response concise and focused on the most important findings."
-        },
-        {
-          role: "user",
-          content: `Based on these observations, provide a brief professional assessment:
-            ${userObservation}
-            
-            Additional findings:
-            - Hail damage is ${hailDamageLikely ? 'likely' : 'unlikely'} present
-            - There is a ${probability * 100}% probability of hail damage`
-        }
-      ],
-      max_tokens: 100,
-      temperature: 0.8
-    });
+    // Analyze image if present
+    let damageAnalysis = null;
+    if (imageBuffer) {
+      try {
+        damageAnalysis = await analyzeDamage(imageBuffer);
+      } catch (analysisError) {
+        console.error('Vision Analysis Error:', analysisError);
+        // Continue without analysis if it fails
+      }
+    }
 
-    const reportText = completion.choices[0].message.content;
+    // Generate report using the new service with vision analysis
+    const reportText = await generateReport(
+      userObservation, 
+      hailDamageLikely, 
+      probability,
+      damageAnalysis
+    );
 
-    // Insert data into Supabase
+    // Update Supabase insert to include damage analysis
     const { data, error } = await supabase
       .from('reports')
       .insert([
@@ -108,7 +99,8 @@ app.post('/api/generate-report', upload.single('image'), async (req, res) => {
           probability: probability,
           report_text: reportText,
           user_observation: userObservation,
-          image_url: imageUrl
+          image_url: imageUrl,
+          damage_analysis: damageAnalysis
         }
       ])
       .select()
