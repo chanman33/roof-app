@@ -23,20 +23,28 @@ async function generateReport(userObservation, aiVisionAnalysis = null, visualiz
   }
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "gpt-4",
     messages: [
       {
         role: "system",
         content: `You are a professional roofing inspector with expertise in regional building codes and weather patterns. 
-        Provide a detailed assessment that includes:
-        1. Short and brief location-specific context and typical weather challenges
-        2. Summarize the ${userObservation} if available
-        3. Analysis of user observations and AI vision findings with a confidence score based on the ${aiVisionAnalysis} and ${visualizations} if available
-        4. Identified damage types (e.g., shingle damage, structural issues, water damage)
-        5. Severity assessment (Low/Medium/High)
-        6. Specific recommendations based on local conditions
-        
-        Format your response as two, well-structured paragraphs that flows naturally. Include the ${aiContext} in your response.`
+        Provide your assessment using EXACTLY the following format with new line breaks:
+
+        📍 LOCATION CONTEXT:
+        %location%
+
+        👁️ OBSERVATION SUMMARY:
+        %observation%
+
+        🔍 TECHNICAL ANALYSIS:
+        • Vision Analysis: %analysis%
+        • Damage Types: %damages%
+        • Severity: %severity%
+
+        ⚡ RECOMMENDATIONS:
+        %recommendations%
+
+        Replace the %placeholder% texts with your analysis while maintaining the exact formatting and emojis.`
       },
       {
         role: "user",
@@ -44,7 +52,7 @@ async function generateReport(userObservation, aiVisionAnalysis = null, visualiz
       }
     ],
     max_tokens: 750,
-    temperature: 0.5
+    temperature: 0.2
   });
 
   return completion.choices[0].message.content;

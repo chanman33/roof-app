@@ -153,6 +153,14 @@ h3 {
   text-align: left;
 }
 
+.structured-report {
+  text-align: left;  /* Add this line */
+}
+
+.report-section {
+  text-align: left;  /* Add this line */
+}
+
 .metadata {
   background: #f9f9f9;
   padding: 10px;

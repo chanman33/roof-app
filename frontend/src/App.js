@@ -98,7 +98,21 @@ function App() {
         {result && (
           <div className="result-section">
             <h2>Inspection Report</h2>
-            <p className="result-report">{result.report}</p>
+            
+            <div className="structured-report">
+              {result.report.split('\n\n').map((section, index) => {
+                if (section.trim()) {
+                  return (
+                    <div key={index} className="report-section">
+                      {section.split('\n').map((line, lineIndex) => (
+                        <p key={lineIndex}>{line}</p>
+                      ))}
+                    </div>
+                  );
+                }
+                return null;
+              })}
+            </div>
 
             {/* Add Visualizations Section */}
             {result.metadata.visualizations ? (
