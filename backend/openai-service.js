@@ -4,12 +4,16 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-async function generateReport(userObservation, aiVisionAnalysis = null, locationInfo = null) {
+async function generateReport(userObservation, aiVisionAnalysis = null, visualizations = null, locationInfo = null) {
   let aiContext = `Based on these observations, provide a brief professional assessment:
     ${userObservation}`;
 
   if (aiVisionAnalysis) {
-    aiContext += `\n\nComputer vision analysis:\n${aiVisionAnalysis}`;
+    aiContext += `\n\nInitial Image Analysis:\n${aiVisionAnalysis}`;
+    
+    if (visualizations?.length > 0) {
+      aiContext += `\n\nDetailed Damage Analysis has been captured and analyzed.`;
+    }
   }
 
   if (locationInfo) {
@@ -18,8 +22,7 @@ async function generateReport(userObservation, aiVisionAnalysis = null, location
     - Region: ${locationInfo.state}
     - Country: ${locationInfo.country}
     - Latitude: ${locationInfo.latitude}
-    - Longitude: ${locationInfo.longitude}
-    - Climate Zone: ${locationInfo.timezone}`;
+    - Longitude: ${locationInfo.longitude}`;
   }
 
   const completion = await openai.chat.completions.create({
@@ -35,7 +38,7 @@ async function generateReport(userObservation, aiVisionAnalysis = null, location
         4. Severity assessment (Low/Medium/High)
         5. Specific recommendations based on local conditions
         
-        Format your response as a single, well-structured paragraph that flows naturally. Include the location details in your response.`
+        Format your response as a single, well-structured paragraph that flows naturally. Include the location details and ${aiContext} in your response.`
       },
       {
         role: "user",

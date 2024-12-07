@@ -27,7 +27,7 @@ async function analyzeDamage(imageData) {
         
         return response.data.outputs;
     } catch (error) {
-        console.error('Roboflow API Error:', error.response?.data || error.message);
+        console.error('OpenAI Vision API Error:', error.response?.data || error.message);
         throw new Error(error.response?.data?.error || error.message);
     }
 }

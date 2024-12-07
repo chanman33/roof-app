@@ -1,3 +1,21 @@
+# AI-Powered Roof Inspection Report
+
+Project details:
+
+This project was built with React, Node.js, and Express. It also uses the Roboflow Vision API for the damage detection model. Roboflow workflow is used to call the OpenAI Vision API. 
+
+Here's the open source visualization and damage detection model: https://universe.roboflow.com/damage-detection-mf5zt/damage-assesment
+
+This app also directly uses the OpenAI API for the report generation and information summarization.
+
+Thx,
+Chandler
+
+
+
+
+
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).

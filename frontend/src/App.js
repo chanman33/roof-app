@@ -99,8 +99,51 @@ function App() {
           <div className="result-section">
             <h2>Inspection Report</h2>
             <p className="result-report">{result.report}</p>
+
+            {/* Add Visualizations Section */}
+            {result.metadata.visualizations && (
+              <div className="visualizations-container">
+                <h2>Damage Analysis Visualizations</h2>
+                <div className="visualization-grid">
+
+                  {/* Annotated Image */}
+                  <div className="visualization-item">
+                    <h4>Detected Damage Locations</h4>
+                    <img
+                      src={`data:image/jpeg;base64,${result.metadata.visualizations.annotatedImage}`}
+                      alt="Annotated damage locations"
+                      className="annotated-image"
+                    />
+                  </div>
+
+                  {/* Cropped Images */}
+                  <div className="visualization-item">
+                    <h4>Damage Close-ups</h4>
+                    <div className="cropped-images-grid">
+                      {result.metadata.visualizations.croppedImages.map((crop, index) => (
+                        <img
+                          key={index}
+                          src={`data:image/jpeg;base64,${crop}`}
+                          alt={`Damage area ${index + 1}`}
+                          className="cropped-image"
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            )}
+
+            {/* Existing metadata section */}
             <h3>Metadata:</h3>
-            <pre className="metadata">{JSON.stringify(result.metadata, null, 2)}</pre>
+            <pre className="metadata">
+              {JSON.stringify(
+                { ...result.metadata, visualizations: undefined }, // Exclude visualizations from JSON display
+                null,
+                2
+              )}
+            </pre>
           </div>
         )}
       </header>

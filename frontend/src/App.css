@@ -161,3 +161,68 @@ h3 {
   text-align: left;
   overflow-x: auto;
 }
+
+/* Visualizations */
+.visualizations-container {
+  width: 100%;
+  padding: 1rem;
+  box-sizing: border-box;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.visualizations-container h3 {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+/* Using CSS Grid for responsiveness */
+.visualization-grid {
+  display: grid;
+  gap: 20px;
+  /* Adjust minmax for your desired breakpoints */
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.visualization-item h4 {
+  margin-bottom: 0.5rem;
+}
+
+/* Ensure images scale nicely within their containers */
+.annotated-image,
+.cropped-image {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background: #fff;
+}
+
+/* Grid for cropped images */
+.cropped-images-grid {
+  display: grid;
+  gap: 10px;
+  /* Adjust these values based on how many images you want per row */
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  justify-items: center;
+  align-items: center;
+}
+
+/* Increase size of cropped images */
+.cropped-image {
+  width: 50%;
+  max-width: 50%;
+  height: auto;
+}
+
+
+/* Optional: Some spacing adjustments for small screens */
+@media (max-width: 600px) {
+  .visualization-grid {
+    grid-template-columns: 1fr;
+  }
+  .cropped-images-grid {
+    grid-template-columns: 1fr 1fr; /* or just 1fr for single column if desired */
+  }
+}

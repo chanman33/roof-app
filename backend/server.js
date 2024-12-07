@@ -6,6 +6,7 @@ const { createClient } = require('@supabase/supabase-js');
 const multer = require('multer');
 const { generateReport } = require('./openai-service');
 const { analyzeDamage } = require('./openai-vision');
+const { scoreDamage } = require('./roboflow-vision');
 const { getLocationInfo } = require('./location-service');
 
 const app = express();
@@ -50,6 +51,7 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
     }
 
     let aiVisionAnalysis = null;
+    let visualizations = null;
     
     // Only process image if it exists
     if (imageFile) {
@@ -62,6 +64,20 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
       }
     }
 
+    if (imageFile) {
+      const damageResults = await scoreDamage(imageFile.buffer);
+      
+      // Format the analysis for the OpenAI report
+      aiVisionAnalysis = damageResults.analysis.map(damage => 
+        `- ${damage.type} damage detected:\n` +
+        `  Location: ${damage.location}\n` +
+        `  Dimensions: ${damage.dimensions}\n` +
+        `  Confidence: ${damage.confidence}%`
+      ).join('\n\n');
+      
+      visualizations = damageResults.visualizations;
+    }
+
     let locationInfo = null;
     try {
       locationInfo = await getLocationInfo();
@@ -69,10 +85,11 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
       console.warn('Failed to fetch location info:', error);
     }
 
-    // Generate report with location info
+    // Generate report with all available information
     const report = await generateReport(
       userObservation || '',
-      aiVisionAnalysis || '',
+      aiVisionAnalysis,
+      visualizations,
       locationInfo
     );
 
@@ -98,7 +115,8 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
         inspectionDate: data.created_at,
         reportId: data.id,
         userObservation: data.user_observation,
-        hasImageAnalysis: !!aiVisionAnalysis
+        hasImageAnalysis: !!aiVisionAnalysis,
+        visualizations: visualizations // Contains both annotated and cropped images
       }
     });
   } catch (error) {

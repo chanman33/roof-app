@@ -3,17 +3,30 @@ const axios = require('axios');
 async function getLocationInfo() {
   try {
     const response = await axios.get('https://ipapi.co/json/');
-    console.log('Raw location data:', response.data);
-    // const locationData = response.data;
+    // console.log('Raw location data:', response.data);
     
+    // Add validation to ensure we have the required fields
+    if (!response.data || !response.data.city) {
+      throw new Error('Invalid location data received');
+    }
+
     return {
-      city: locationData.city,
-      state: locationData.region,
-      country: locationData.country_name,
+      city: response.data.city || 'Unknown',
+      state: response.data.region || 'Unknown',
+      country: response.data.country_name || 'Unknown',
+      latitude: response.data.latitude,
+      longitude: response.data.longitude,
+      timestamp: new Date().toISOString()
     };
   } catch (error) {
     console.error('Error fetching location data:', error);
-    return null;
+    // Return a default object instead of null to prevent undefined errors
+    return {
+      city: 'Unknown',
+      state: 'Unknown',
+      country: 'Unknown',
+      timestamp: new Date().toISOString()
+    };
   }
 }
 
