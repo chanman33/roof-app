@@ -5,7 +5,8 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const multer = require('multer');
 const { generateReport } = require('./openai-service');
-const { analyzeDamage } = require('./roboflow-vision');
+const { analyzeDamage } = require('./openai-vision');
+const { getLocationInfo } = require('./location-service');
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -33,74 +34,57 @@ const upload = multer({
 });
 
 // Updated endpoint
-app.post('/api/generate-report', upload.single('image'), async (req, res) => {
+app.post('/api/analyze', upload.single('image'), async (req, res) => {
   try {
-    const hailDamageLikely = JSON.parse(req.body.hailDamageLikely);
-    const probability = JSON.parse(req.body.probability);
-    const { userObservation } = req.body;
-    const imageBuffer = req.file?.buffer;
+    const imageFile = req.file;
+    const userObservation = req.body.userObservation;
+    const latitude = req.body.latitude;
+    const longitude = req.body.longitude;
 
-    // Upload image to Supabase Storage if present
-    let imageUrl = null;
-    if (imageBuffer) {
-      try {
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
-        const filePath = `public/${fileName}`;
-        const { data: uploadData, error: uploadError } = await supabase
-          .storage
-          .from('inspection-images')
-          .upload(filePath, imageBuffer, {
-            contentType: 'image/jpeg',
-          });
+    // Check if we have at least one input
+    if (!imageFile && !userObservation) {
+      return res.status(400).json({
+        error: 'Missing input',
+        details: 'Please provide either an image or a user observation'
+      });
+    }
 
-        if (uploadError) {
-          console.error('Supabase Storage Error:', uploadError);
-          throw new Error(`Failed to upload image: ${uploadError.message}`);
-        }
-        
-        const { data: { publicUrl } } = supabase
-          .storage
-          .from('inspection-images')
-          .getPublicUrl(`public/${fileName}`);
-        
-        imageUrl = publicUrl;
-      } catch (uploadError) {
-        console.error('Image Upload Error:', uploadError);
-        // Continue without image if upload fails
-        imageUrl = null;
+    let aiVisionAnalysis = null;
+    
+    // Only process image if it exists
+    if (imageFile) {
+      const damageAnalysis = await analyzeDamage(imageFile.buffer);
+      
+      if (damageAnalysis?.[0]?.open_ai?.output) {
+        aiVisionAnalysis = damageAnalysis[0].open_ai.output;
+      } else {
+        console.warn('Image analysis produced no results');
       }
     }
 
-    // Analyze image if present
-    let damageAnalysis = null;
-    if (imageBuffer) {
-      try {
-        damageAnalysis = await analyzeDamage(imageBuffer);
-      } catch (analysisError) {
-        console.error('Vision Analysis Error:', analysisError);
-        // Continue without analysis if it fails
-      }
+    let locationInfo = null;
+    try {
+      locationInfo = await getLocationInfo();
+    } catch (error) {
+      console.warn('Failed to fetch location info:', error);
     }
 
-    // Generate report using the new service with vision analysis
-    const reportText = await generateReport(
-      userObservation, 
-      hailDamageLikely, 
-      probability,
-      damageAnalysis
+    // Generate report with location info
+    const report = await generateReport(
+      userObservation || '',
+      aiVisionAnalysis || '',
+      locationInfo
     );
 
-    // Update Supabase insert to include damage analysis
+    // Update Supabase storage to include location
     const { data, error } = await supabase
       .from('reports')
       .insert([
         {
-          hail_damage_likely: hailDamageLikely,
-          probability: probability,
-          report_text: reportText,
-          user_observation: userObservation,
-          image_url: imageUrl,
-          damage_analysis: damageAnalysis
+          report_text: report,
+          user_observation: userObservation || null,
+          ai_vision_analysis: aiVisionAnalysis || null,
+          location: locationInfo
         }
       ])
       .select()
@@ -108,18 +92,21 @@ app.post('/api/generate-report', upload.single('image'), async (req, res) => {
 
     if (error) throw error;
 
-    // Return the stored report
     res.json({
       report: data.report_text,
       metadata: {
         inspectionDate: data.created_at,
         reportId: data.id,
-        userObservation: data.user_observation
+        userObservation: data.user_observation,
+        hasImageAnalysis: !!aiVisionAnalysis
       }
     });
   } catch (error) {
     console.error('Error:', error);
-    res.status(500).json({ error: 'Failed to generate or store report' });
+    res.status(500).json({ 
+      error: 'Failed to process request',
+      details: error.message
+    });
   }
 });
 
