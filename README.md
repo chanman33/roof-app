@@ -13,8 +13,11 @@ Chandler
 
 
 
+To run the app:
 
-
+1. npm install
+2. npm start in the frontend directory
+3. node server.js in the backend directory
 
 # Getting Started with Create React App
 
